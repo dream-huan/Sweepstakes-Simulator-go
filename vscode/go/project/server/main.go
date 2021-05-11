@@ -172,7 +172,7 @@ func process(conn net.Conn) {
 
 func main() {
 	initdb()
-	listen, err := net.Listen("tcp", "127.0.0.1:30000")
+	listen, err := net.Listen("tcp", "10.0.0.4:30000")
 	if err != nil {
 		fmt.Println("listen failed, err:", err)
 		return
@@ -184,6 +184,8 @@ func main() {
 			fmt.Println("accept failed, err:", err)
 			continue
 		}
+		fmt.Printf("Copyright ©2021 dreamxw.com All Right Reserved Powered by Azure")
+		fmt.Printf("The Service is starting...")
 		go process(conn)
 	}
 }
