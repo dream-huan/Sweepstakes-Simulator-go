@@ -33,7 +33,7 @@ func checkp(uid int64, s string) (b bool) {
 
 func initdb() {
 	var err error
-	dsn := "root:SUIbianla123@tcp(127.0.0.1:3306)/users?charset=utf8mb4&parseTime=True"
+	dsn := "root:SUIbianla123@@tcp(127.0.0.1:3306)/users?charset=utf8mb4&parseTime=True"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Printf("DateBase Open Error:%v", err)
@@ -78,8 +78,8 @@ func login(msg *string, conn net.Conn) {
 		data, _ := proto.Encode("true")
 		conn.Write(data)
 	} else {
-		data, _ := proto.Encode("true")
-		conn.Write([]byte(data))
+		data, _ := proto.Encode("false")
+		conn.Write(data)
 	}
 }
 
