@@ -13,8 +13,8 @@ func Logwrite(err error) {
 	}
 	log.SetOutput(file)
 	log.SetPrefix("[Error]")
-	log.SetFlags(log.Llongfile | log.Lmicroseconds | log.Ldate)
-	log.Println(err)
+	log.SetFlags(log.Ldate)
+	log.Printf("%#v", *err)
 }
 
 func BasicLogwrite(msg string) {
@@ -23,6 +23,6 @@ func BasicLogwrite(msg string) {
 		Logwrite(err)
 	}
 	log.SetOutput(file)
-	log.SetFlags(log.Llongfile | log.Lmicroseconds | log.Ldate)
-	log.Println(msg)
+	log.SetFlags(log.Ldate)
+	log.Printf("%#v", msg)
 }
