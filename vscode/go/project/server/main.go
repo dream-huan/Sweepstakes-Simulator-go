@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"os"
 	"std/go/project/proto"
 	"strconv"
 	"time"
@@ -31,29 +33,59 @@ func checkp(uid int64, s string) (b bool) {
 	}
 }
 
+func logwrite(err error) {
+	file, err := os.OpenFile("./log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		logwrite(err)
+	}
+	log.SetOutput(file)
+	log.SetPrefix("[Error]")
+	log.SetFlags(log.Llongfile | log.Lmicroseconds | log.Ldate)
+	log.Println(err)
+}
+
+func basiclogwrite(msg string) {
+	file, err := os.OpenFile("./log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		logwrite(err)
+	}
+	log.SetOutput(file)
+	log.SetFlags(log.Llongfile | log.Lmicroseconds | log.Ldate)
+	log.Println(msg)
+}
+
 func initdb() {
 	var err error
-	dsn := "root:SUIbianla123@tcp(127.0.0.1:3306)/users?charset=utf8mb4&parseTime=True"
+	dsn := "root:SUIbianla123@@tcp(127.0.0.1:3306)/users?charset=utf8mb4&parseTime=True"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
-		fmt.Printf("DateBase Open Error:%v", err)
+		logwrite(err)
 	}
 	err = db.Ping()
 	if err != nil {
-		fmt.Printf("DateBase Access Error:%v", err)
+		logwrite(err)
 	}
 }
 
 func insert(name, p string) (uid int64) {
 	sqlStr := "insert into users(u_name,u_password) values(?,?)"
-	ret, _ := db.Exec(sqlStr, name, p)
-	uid, _ = ret.LastInsertId()
+	ret, err := db.Exec(sqlStr, name, p)
+	if err != nil {
+		logwrite(err)
+	}
+	uid, err = ret.LastInsertId()
+	if err != nil {
+		logwrite(err)
+	}
 	return uid
 }
 
 func pnp(uid int64, np string) {
 	sqlStr := "update users set u_password=? where uid=?"
-	_, _ = db.Exec(sqlStr, np, uid)
+	_, err := db.Exec(sqlStr, np, uid)
+	if err != nil {
+		logwrite(err)
+	}
 }
 
 func login(msg *string, conn net.Conn) {
@@ -72,14 +104,24 @@ func login(msg *string, conn net.Conn) {
 			tp += string(r)
 		}
 	}
-	uid, _ = strconv.ParseInt(tu, 10, 64)
-	fmt.Printf("%v new login:\nuid:%d\nparsep:%s\n", time.Now(), uid, tp)
+	uid, err := strconv.ParseInt(tu, 10, 64)
+	if err != nil {
+		logwrite(err)
+	}
 	if checkp(uid, tp) {
-		data, _ := proto.Encode("true")
+		data, err := proto.Encode("true")
+		basiclogwrite(fmt.Sprintf("New Login:\nUid:%d\nEnterPassword:%s\nResult:%s\n", uid, tp, "true"))
+		if err != nil {
+			logwrite(err)
+		}
 		conn.Write(data)
 	} else {
-		data, _ := proto.Encode("true")
-		conn.Write([]byte(data))
+		data, err := proto.Encode("false")
+		basiclogwrite(fmt.Sprintf("New Login:\nUid:%d\nEnterPassword:%s\nResult:%s\n", uid, tp, "false"))
+		if err != nil {
+			logwrite(err)
+		}
+		conn.Write(data)
 	}
 }
 
@@ -99,8 +141,11 @@ func register(msg *string, conn net.Conn) {
 		}
 	}
 	uid := insert(name, p)
-	fmt.Printf("%v new register:\nuid:%d\nname:%s\npassword:%s\n", time.Now(), uid, name, p)
-	data, _ := proto.Encode(strconv.FormatInt(uid, 10))
+	basiclogwrite(fmt.Sprintf("New Register:\nUid:%d\nName:%s\nPassword:%s\n", uid, name, p))
+	data, err := proto.Encode(strconv.FormatInt(uid, 10))
+	if err != nil {
+		logwrite(err)
+	}
 	conn.Write(data)
 }
 
@@ -124,14 +169,24 @@ func changep(msg *string, conn net.Conn) {
 			np += string(r)
 		}
 	}
-	uid, _ = strconv.ParseInt(tu, 10, 64)
-	fmt.Printf("%v new changep:\nuid:%d\noldp:%s\nnewp:%s\n", time.Now(), uid, tp, np)
+	uid, err := strconv.ParseInt(tu, 10, 64)
+	if err != nil {
+		logwrite(err)
+	}
 	if checkp(uid, tp) {
 		pnp(uid, np)
-		data, _ := proto.Encode("true")
+		basiclogwrite(fmt.Sprintf("New Changep:\nUid:%d\nOldp:%s\nNewp:%s\nResult:%s\n", uid, tp, np, "true"))
+		data, err := proto.Encode("true")
+		if err != nil {
+			logwrite(err)
+		}
 		conn.Write(data)
 	} else {
-		data, _ := proto.Encode("false")
+		data, err := proto.Encode("false")
+		basiclogwrite(fmt.Sprintf("New Changep:\nUid:%d\nOldp:%s\nNewp:%s\nResult:%s\n", uid, tp, np, "false"))
+		if err != nil {
+			logwrite(err)
+		}
 		conn.Write(data)
 	}
 }
@@ -145,8 +200,7 @@ func process(conn net.Conn) {
 			return
 		}
 		if err != nil {
-			fmt.Println("decode msg failed, err:", err)
-			return
+			logwrite(err)
 		}
 		temp := ""
 		for i := 0; i < len(msg); i++ {
@@ -174,14 +228,13 @@ func main() {
 	initdb()
 	listen, err := net.Listen("tcp", "10.0.0.4:30000")
 	if err != nil {
-		fmt.Println("listen failed, err:", err)
-		return
+		logwrite(err)
 	}
 	defer listen.Close()
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			fmt.Println("accept failed, err:", err)
+			logwrite(err)
 			continue
 		}
 		fmt.Printf("Copyright ©2021 dreamxw.com All Right Reserved Powered by Azure")
