@@ -2,9 +2,9 @@ package mysql
 
 import (
 	"database/sql"
+	"dream/gologger"
 	"fmt"
 	"runtime"
-	"std/go/project/gologger"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"

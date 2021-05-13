@@ -17,7 +17,7 @@ func Logwrite(str string) {
 	}
 	log.SetOutput(file)
 	log.SetPrefix("[Error]")
-	log.SetFlags(log.Ldate)
+	log.SetFlags(log.Ldate | log.Lmicroseconds)
 	log.Printf("%#v", str)
 }
 

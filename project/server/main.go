@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
+	"dream/gologger"
+	"dream/mysql"
+	"dream/proto"
 	"fmt"
 	"io"
 	"net"
 	"runtime"
-	"std/go/project/gologger"
-	"std/go/project/mysql"
-	"std/go/project/proto"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
