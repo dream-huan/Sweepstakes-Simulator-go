@@ -2,15 +2,15 @@ package mysql
 
 import (
 	"database/sql"
-	"dream/gologger"
-	"fmt"
-	"runtime"
-	"strconv"
+	"log"
+	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
+var file1, _ = os.OpenFile("../log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 var u struct {
 	uid        int64
@@ -33,13 +33,17 @@ func init() {
 	dsn := "root:SUIbianla123@@tcp(127.0.0.1:3306)/users?charset=utf8mb4&parseTime=True"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	err = db.Ping()
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 }
 
@@ -47,13 +51,17 @@ func Insert(name, p string) (uid int64) {
 	sqlStr := "insert into users(u_name,u_password) values(?,?)"
 	ret, err := db.Exec(sqlStr, name, p)
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	uid, err = ret.LastInsertId()
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	return uid
 }
@@ -62,7 +70,9 @@ func Pnp(uid int64, np string) {
 	sqlStr := "update users set u_password=? where uid=?"
 	_, err := db.Exec(sqlStr, np, uid)
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 }

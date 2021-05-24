@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
+	"dream/proto"
 	"fmt"
 	"io"
 	"net"
-	"std/go/project/proto"
 	"strconv"
 )
 

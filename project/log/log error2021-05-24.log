@@ -1,0 +1,3 @@
+[Error]2021/05/24 12:43:47.724574 nil
+[Error]2021/05/24 12:58:18.400117 /workspaces/go-chat/project/gologger/gologger.go:21: <nil>
+Error2021/05/24 13:02:40.495083 /workspaces/go-chat/project/text/main.go:21: 123

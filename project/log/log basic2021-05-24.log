@@ -1,0 +1,2 @@
+[Error]2021/05/24 12:53:41.396684 &errors.errorString{s:"unexpected newline"}
+[Error]2021/05/24 12:56:56.441877 /workspaces/go-chat/project/gologger/gologger.go:20: <nil>

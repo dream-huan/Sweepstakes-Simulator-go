@@ -7,12 +7,17 @@ import (
 	"dream/proto"
 	"fmt"
 	"io"
+	"log"
 	"net"
-	"runtime"
+	"os"
 	"strconv"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
+
+var file1, _ = os.OpenFile("../log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+var file2, _ = os.OpenFile("../log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 func login(msg *string, conn net.Conn) {
 	var uid int64
@@ -32,23 +37,29 @@ func login(msg *string, conn net.Conn) {
 	}
 	uid, err := strconv.ParseInt(tu, 10, 64)
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	if mysql.Checkp(uid, tp) {
 		data, err := proto.Encode("true")
 		gologger.BasicLogwrite(fmt.Sprintf("New Login: Uid:%d EnterPassword:%s Result:%s ", uid, tp, "true"))
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 		}
 		conn.Write(data)
 	} else {
 		data, err := proto.Encode("false")
 		gologger.BasicLogwrite(fmt.Sprintf("New Login: Uid:%d EnterPassword:%s Result:%s ", uid, tp, "false"))
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 		}
 		conn.Write(data)
 	}
@@ -73,8 +84,10 @@ func register(msg *string, conn net.Conn) {
 	gologger.BasicLogwrite(fmt.Sprintf("New Register: Uid:%d Name:%s Password:%s ", uid, name, p))
 	data, err := proto.Encode(strconv.FormatInt(uid, 10))
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	conn.Write(data)
 }
@@ -101,24 +114,30 @@ func changep(msg *string, conn net.Conn) {
 	}
 	uid, err := strconv.ParseInt(tu, 10, 64)
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	if mysql.Checkp(uid, tp) {
 		mysql.Pnp(uid, np)
 		gologger.BasicLogwrite(fmt.Sprintf("New Changep: Uid:%d Oldp:%s Newp:%s Result:%s ", uid, tp, np, "true"))
 		data, err := proto.Encode("true")
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 		}
 		conn.Write(data)
 	} else {
 		data, err := proto.Encode("false")
 		gologger.BasicLogwrite(fmt.Sprintf("New Changep: Uid:%d Oldp:%s Newp:%s Result:%s ", uid, tp, np, "false"))
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 		}
 		conn.Write(data)
 	}
@@ -133,8 +152,10 @@ func process(conn net.Conn) {
 			return
 		}
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 		}
 		temp := ""
 		for i := 0; i < len(msg); i++ {
@@ -161,15 +182,19 @@ func process(conn net.Conn) {
 func main() {
 	listen, err := net.Listen("tcp", "10.0.0.4:30000")
 	if err != nil {
-		_, file, line, ok := runtime.Caller(1)
-		gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
 	}
 	defer listen.Close()
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			_, file, line, ok := runtime.Caller(1)
-			gologger.Logwrite(fmt.Sprintf("%v", err) + " " + file + " " + strconv.Itoa(line) + strconv.FormatBool(ok))
+			log.SetOutput(file1)
+			log.SetPrefix("[Error]")
+			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+			log.Printf("%v", err)
 			continue
 		}
 		fmt.Printf("Copyright ©2021 dreamxw.com All Right Reserved Powered by Azure")
