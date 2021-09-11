@@ -5,7 +5,11 @@ import (
 	"dream/proto"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"net"
+	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -34,6 +38,122 @@ func check(p string) (b bool) {
 	}
 }
 
+func checktoggle(conn net.Conn, uid int) {
+	msg := "checktoggle " + strconv.Itoa(uid)
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return
+	}
+	conn.Write(data)
+	reader := bufio.NewReader(conn)
+	msg, err = proto.Decode(reader)
+	fmt.Printf("现在选定的池子为:%v", msg)
+}
+
+func toggle(conn net.Conn, uid int) {
+	var input int
+	fmt.Println("请输入1~3表示你需要切换的池子")
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		fmt.Printf("error:%v", err)
+	}
+	if input >= 1 && input <= 3 {
+		msg := "toggle " + strconv.Itoa(uid) + " " + strconv.Itoa(input)
+		data, err := proto.Encode(msg)
+		if err != nil {
+			fmt.Println("encode msg failed, err:", err)
+			return
+		}
+		conn.Write(data)
+		fmt.Println("已切换")
+	} else {
+		fmt.Println("输入错误")
+	}
+}
+
+func take(takes int) {
+
+}
+
+func checkresult() {
+
+}
+
+func checkbag() {
+
+}
+
+func recharge() {
+
+}
+
+func checkstatistics() {
+
+}
+
+func enter(conn net.Conn, uid int) {
+	_ = os.Remove("cardpool.txt")
+	resp, err := http.Get("https://dreamxw.com/data/cardpool.txt")
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	buf := make([]byte, 1024)
+	f, err1 := os.OpenFile("cardpool.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm) //可读写，追加的方式打开（或创建文件）
+	if err1 != nil {
+		panic(err1)
+		return
+	}
+	defer f.Close()
+
+	for {
+		n, _ := resp.Body.Read(buf)
+		if 0 == n {
+			break
+		}
+		f.WriteString(string(buf[:n]))
+	}
+
+	content, err := ioutil.ReadFile("cardpool.txt")
+	if err != nil {
+		fmt.Println("read file failed, err:", err)
+		return
+	}
+	fmt.Println(string(content))
+
+	fmt.Printf("欢迎！请输入要操作的事项：\n0.查看当前池子\n1.切换池子\n2.抽取一次\n3.抽取十次\n4.查询结果\n5.查询背包\n6.充值\n7.查询统计数据\n其他.退出\n")
+	var input int
+	for {
+		_, err := fmt.Scanln(&input)
+		if err == io.EOF {
+			break
+		}
+		if input == 0 {
+			checktoggle(conn, uid)
+		} else if input == 1 {
+			toggle(conn, uid)
+		} else if input == 2 {
+			take(1)
+		} else if input == 3 {
+			take(10)
+		} else if input == 4 {
+			checkresult()
+		} else if input == 5 {
+			checkbag()
+		} else if input == 6 {
+			recharge()
+		} else if input == 7 {
+			checkstatistics()
+		} else {
+			break
+		}
+	}
+	return
+}
+
 func login(conn net.Conn) {
 	var uid int
 	var p string
@@ -56,6 +176,7 @@ func login(conn net.Conn) {
 	msg, err = proto.Decode(reader)
 	if string(msg) == "true" {
 		fmt.Println("登陆成功")
+		enter(conn, uid)
 	} else {
 		fmt.Println("密码不正确或不存在该账号")
 	}

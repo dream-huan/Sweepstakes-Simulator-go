@@ -16,8 +16,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var file1, _ = os.OpenFile("../log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-var file2, _ = os.OpenFile("../log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+var file1, _ = os.OpenFile("log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+var file2, _ = os.OpenFile("log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 func login(msg *string, conn net.Conn) {
 	var uid int64
@@ -63,6 +63,71 @@ func login(msg *string, conn net.Conn) {
 		}
 		conn.Write(data)
 	}
+}
+
+func checktoggle(msg *string, conn net.Conn) {
+	var uid int64
+	var pool int
+	var tu string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tu += string(r)
+		}
+	}
+	k = 1
+	uid, _ = strconv.ParseInt(tu, 10, 64)
+	pool = mysql.Checkpool(uid)
+	file, err := os.Open("data/cardpool.txt")
+	if err != nil {
+		fmt.Println("open file failed, err:", err)
+		return
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	var content string
+	for {
+		line, err := reader.ReadString('\n') //注意是字符
+		if k == pool {
+			content = line
+			break
+		}
+		k += 1
+		if err == io.EOF {
+			break
+		}
+	}
+	data, _ := proto.Encode(content)
+	conn.Write(data)
+}
+
+func toggle(msg *string, conn net.Conn) {
+	var uid int64
+	var pool int
+	var tu string
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tu += string(r)
+		}
+		if k == 2 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tu, 10, 64)
+	pool, _ = strconv.Atoi(tp)
+	mysql.Toggle(uid, pool)
+}
+
+func take(takes=1 int){
+	
 }
 
 func register(msg *string, conn net.Conn) {
@@ -172,6 +237,10 @@ func process(conn net.Conn) {
 			register(&msg, conn)
 		case "changep":
 			changep(&msg, conn)
+		case "checktoggle":
+			checktoggle(&msg, conn)
+		case "toggle":
+			toggle(&msg, conn)
 		default:
 			break
 		}
@@ -180,7 +249,7 @@ func process(conn net.Conn) {
 }
 
 func main() {
-	listen, err := net.Listen("tcp", "10.0.0.4:30000")
+	listen, err := net.Listen("tcp", "127.0.0.1:30000")
 	if err != nil {
 		log.SetOutput(file1)
 		log.SetPrefix("[Error]")

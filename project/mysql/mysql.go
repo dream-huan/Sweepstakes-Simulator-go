@@ -16,16 +16,23 @@ var u struct {
 	uid        int64
 	u_name     string
 	u_password string
+	pool       int
 }
 
 func Checkp(uid int64, s string) (b bool) {
 	sqlStr := "select * from users where uid=?"
-	_ = db.QueryRow(sqlStr, uid).Scan(&u.uid, &u.u_name, &u.u_password)
+	_ = db.QueryRow(sqlStr, uid).Scan(&u.uid, &u.u_name, &u.u_password, &u.pool)
 	if u.u_password == s {
 		return true
 	} else {
 		return false
 	}
+}
+
+func Checkpool(uid int64) int {
+	sqlStr := "select pool from users where uid=?"
+	_ = db.QueryRow(sqlStr, uid).Scan(&u.pool)
+	return u.pool
 }
 
 func init() {
@@ -69,6 +76,17 @@ func Insert(name, p string) (uid int64) {
 func Pnp(uid int64, np string) {
 	sqlStr := "update users set u_password=? where uid=?"
 	_, err := db.Exec(sqlStr, np, uid)
+	if err != nil {
+		log.SetOutput(file1)
+		log.SetPrefix("[Error]")
+		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
+		log.Printf("%v", err)
+	}
+}
+
+func Toggle(uid int64, pool int) {
+	sqlStr := "update users set pool=? where uid=?"
+	_, err := db.Exec(sqlStr, pool, uid)
 	if err != nil {
 		log.SetOutput(file1)
 		log.SetPrefix("[Error]")
