@@ -23,11 +23,12 @@ var u struct {
 	stone      int
 	addstone   int
 	effective  bool
+	catalog    string
 }
 
 func Checkp(uid int64, s string) (b bool) {
 	sqlStr := "select * from users where uid=?"
-	_ = db.QueryRow(sqlStr, uid).Scan(&u.uid, &u.u_name, &u.u_password, &u.pool, &u.fivetimes, &u.fourtimes, &u.stone)
+	_ = db.QueryRow(sqlStr, uid).Scan(&u.uid, &u.u_name, &u.u_password, &u.pool, &u.fivetimes, &u.fourtimes, &u.stone, &u.catalog)
 	if u.u_password == s {
 		return true
 	} else {
@@ -108,7 +109,7 @@ func Changestone(newstone int, uid int64) {
 }
 
 func Checkresult(uid int64) {
-	sqlStr := "select uid,prop,time from data where uid=? into outfile '/workspaces/go-chat/project/" + strconv.FormatInt(uid, 10) + ".txt'"
+	sqlStr := "select uid,prop,time from data where uid=? into outfile '/workspaces/go-chat/project/" + strconv.FormatInt(uid, 10) + "/" + strconv.FormatInt(uid, 10) + ".txt'"
 	_, err := db.Exec(sqlStr, uid)
 	if err != nil {
 		log.SetOutput(file1)

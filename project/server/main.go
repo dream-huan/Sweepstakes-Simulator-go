@@ -7,6 +7,7 @@ import (
 	"dream/proto"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -280,17 +281,18 @@ func checkresult(msg *string, conn net.Conn) {
 		}
 	}
 	uid, _ = strconv.ParseInt(tp, 10, 64)
+	err := os.Mkdir(strconv.FormatInt(uid, 10), os.ModePerm)
 	mysql.Checkresult(uid)
 	// file3, _ := os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	content := []byte(`<!DOCTYPE html>
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>haha</title>
+	<title>记录查询</title>
 </head>
 <body>`)
-	err := ioutil.WriteFile(strconv.Itoa(uid)+".html", content, 0644)
-	file, err := os.Open(strconv.Itoa(uid) + ".txt")
+	err = ioutil.WriteFile(strconv.FormatInt(uid, 10)+"/"+strconv.FormatInt(uid, 10)+".html", content, 0644)
+	file, err := os.Open(strconv.FormatInt(uid, 10) + "/" + strconv.FormatInt(uid, 10) + ".txt")
 	if err != nil {
 		fmt.Println("open file failed, err:", err)
 		return
@@ -298,7 +300,7 @@ func checkresult(msg *string, conn net.Conn) {
 	defer file.Close()
 	reader := bufio.NewReader(file)
 	var f *os.File
-	f, _ = os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, _ = os.OpenFile(strconv.FormatInt(uid, 10)+"/"+strconv.FormatInt(uid, 10)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	defer f.Close()
 	for {
 		line, err := reader.ReadString('\n') //注意是字符
