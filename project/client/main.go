@@ -100,8 +100,23 @@ func checkbag() {
 
 }
 
-func recharge() {
-
+func recharge(conn net.Conn, uid int) {
+	fmt.Println("请输入充值码:")
+	var key string
+	_, err := fmt.Scanln(&key)
+	if err != nil {
+		fmt.Printf("error:%v", err)
+	}
+	msg := "recharge " + strconv.Itoa(uid) + " " + key
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return
+	}
+	conn.Write(data)
+	reader := bufio.NewReader(conn)
+	msg, err = proto.Decode(reader)
+	fmt.Println(msg)
 }
 
 func checkstatistics(conn net.Conn, uid int) {
@@ -115,6 +130,19 @@ func checkstatistics(conn net.Conn, uid int) {
 	reader := bufio.NewReader(conn)
 	msg, err = proto.Decode(reader)
 	fmt.Println(msg)
+}
+
+func getstone(conn net.Conn, uid int) string {
+	msg := "getstone " + strconv.Itoa(uid)
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return "0"
+	}
+	conn.Write(data)
+	reader := bufio.NewReader(conn)
+	msg, err = proto.Decode(reader)
+	return string(msg)
 }
 
 func enter(conn net.Conn, uid int) {
@@ -148,7 +176,7 @@ func enter(conn net.Conn, uid int) {
 		return
 	}
 	fmt.Println(string(content))
-
+	fmt.Println("剩余原石数:" + getstone(conn, uid))
 	fmt.Printf("欢迎！请输入要操作的事项：\n0.查看当前池子\n1.切换池子\n2.抽取一次\n3.抽取十次\n4.查询结果\n5.查询背包\n6.充值\n7.查询统计数据\n其他.退出\n")
 	var input int
 	for {
@@ -169,7 +197,7 @@ func enter(conn net.Conn, uid int) {
 		} else if input == 5 {
 			checkbag()
 		} else if input == 6 {
-			recharge()
+			recharge(conn, uid)
 		} else if input == 7 {
 			checkstatistics(conn, uid)
 		} else {

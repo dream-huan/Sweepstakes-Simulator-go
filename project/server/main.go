@@ -158,6 +158,32 @@ func toggle(msg *string, conn net.Conn) {
 	mysql.Toggle(uid, pool)
 }
 
+func recharge(msg *string, conn net.Conn) {
+	var uid int64
+	var tu string
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tu += string(r)
+		}
+		if k == 2 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tu, 10, 64)
+	if mysql.Recharge(tp, uid) == true {
+		data, _ := proto.Encode("充值状态:true")
+		conn.Write(data)
+	} else {
+		data, _ := proto.Encode("充值状态:false")
+		conn.Write(data)
+	}
+}
+
 func take(msg *string, conn net.Conn) {
 	var uid int64
 	var times int
@@ -179,6 +205,14 @@ func take(msg *string, conn net.Conn) {
 	times, _ = strconv.Atoi(tu)
 	fivetimes, fourtimes := mysql.Checkstatistics(uid)
 	message := ""
+	stone := mysql.Getstone(uid)
+	if stone < times*160 {
+		message := "原石不足，现有原石:" + strconv.Itoa(stone)
+		data, _ := proto.Encode(message)
+		conn.Write(data)
+		return
+	}
+	stone -= 160 * times
 	for {
 		if times == 0 {
 			break
@@ -227,6 +261,7 @@ func take(msg *string, conn net.Conn) {
 			profive += guaprofive
 		}
 	}
+	mysql.Changestone(stone, uid)
 	mysql.Timeschange(uid, fivetimes, fourtimes)
 	data, _ := proto.Encode(message)
 	conn.Write(data)
@@ -246,6 +281,33 @@ func checkresult(msg *string, conn net.Conn) {
 	}
 	uid, _ = strconv.ParseInt(tp, 10, 64)
 	mysql.Checkresult(uid)
+	// file3, _ := os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	content := []byte(`<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>haha</title>
+</head>
+<body>`)
+	err := ioutil.WriteFile(strconv.Itoa(uid)+".html", content, 0644)
+	file, err := os.Open(strconv.Itoa(uid) + ".txt")
+	if err != nil {
+		fmt.Println("open file failed, err:", err)
+		return
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	var f *os.File
+	f, _ = os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	defer f.Close()
+	for {
+		line, err := reader.ReadString('\n') //注意是字符
+		_, _ = io.WriteString(f, line+"<br>")
+		if err == io.EOF {
+			break
+		}
+	}
+	io.WriteString(f, "\n</body>\n</html>")
 }
 
 func checkstatistics(msg *string, conn net.Conn) {
@@ -265,6 +327,24 @@ func checkstatistics(msg *string, conn net.Conn) {
 	// fmt.Printf("五星已有%v次没出，四星已有%v次没出", t1, t2)
 	message := "五星已有" + strconv.Itoa(t1) + "次没出，四星已有" + strconv.Itoa(t2) + "次没出"
 	data, _ := proto.Encode(message)
+	conn.Write(data)
+}
+
+func getstone(msg *string, conn net.Conn) {
+	var uid int64
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tp, 10, 64)
+	message := mysql.Getstone(uid)
+	data, _ := proto.Encode(strconv.Itoa(message))
 	conn.Write(data)
 }
 
@@ -385,6 +465,10 @@ func process(conn net.Conn) {
 			checkresult(&msg, conn)
 		case "checkstatistics":
 			checkstatistics(&msg, conn)
+		case "getstone":
+			getstone(&msg, conn)
+		case "recharge":
+			recharge(&msg, conn)
 		default:
 			break
 		}
