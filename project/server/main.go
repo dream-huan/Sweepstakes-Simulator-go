@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -18,6 +19,37 @@ import (
 
 var file1, _ = os.OpenFile("log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 var file2, _ = os.OpenFile("log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+var fivestar1 [1024]string //储存有哪些五星
+var fourstar1 [1024]string //同理上面
+var threestar1 [1024]string
+var fivestarsum1 = 0 //五星的数量
+var fourstarsum1 = 0
+var threestarsum1 = 0
+var profive float64 //五星的概率
+var profour float64
+var prothree float64
+var initprofive float64
+var guafour int        //保底四星次数
+var guafive int        //五星概率提升次数
+var guaprofive float64 //五星概率提升
+
+func extraction(s string, a string, b string, times int) (str string) {
+	str = ""
+	k1 := 0
+	for _, r := range s {
+		if string(r) == a {
+			k1 += 1
+			continue
+		}
+		if string(r) == b && k1 == times {
+			break
+		}
+		if k1 == times {
+			str += string(r)
+		}
+	}
+	return str
+}
 
 func login(msg *string, conn net.Conn) {
 	var uid int64
@@ -126,8 +158,114 @@ func toggle(msg *string, conn net.Conn) {
 	mysql.Toggle(uid, pool)
 }
 
-func take(takes=1 int){
-	
+func take(msg *string, conn net.Conn) {
+	var uid int64
+	var times int
+	var tu string
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tu += string(r)
+		}
+		if k == 2 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tp, 10, 64)
+	times, _ = strconv.Atoi(tu)
+	fivetimes, fourtimes := mysql.Checkstatistics(uid)
+	message := ""
+	for {
+		if times == 0 {
+			break
+		}
+		rand.Seed(time.Now().UnixNano())
+		probability := rand.Intn(999) + 1
+		now := time.Now()
+		if fourtimes == 10 {
+			fourtimes = 1
+			probability := rand.Intn(fourstarsum1 - 1)
+			// fmt.Printf("%v(四星)", fourstar1[probability])
+			mysql.Insertprop(uid, fourstar1[probability]+"(四星)", now.Format("2006/01/02 15:04:05"))
+			message += (fourstar1[probability] + "(四星)")
+			times -= 1
+			fivetimes += 1
+			if times > 1 {
+				message += ","
+			}
+			continue
+		}
+		if probability >= 1 && probability <= int(profive*1000) {
+			probability := rand.Intn(fivestarsum1 - 1)
+			// fmt.Printf("%v(五星)", fivestar1[probability])
+			mysql.Insertprop(uid, fivestar1[probability]+"(五星)", now.Format("2006/01/02 15:04:05"))
+			message += (fivestar1[probability] + "(五星)")
+			profive = initprofive
+			fivetimes = 1
+		} else if probability >= int(profive*1000)+1 && probability <= int(profour*1000) {
+			probability := rand.Intn(fourstarsum1 - 1)
+			// fmt.Printf("%v(四星)", fourstar1[probability])
+			mysql.Insertprop(uid, fourstar1[probability]+"(四星)", now.Format("2006/01/02 15:04:05"))
+			message += (fourstar1[probability] + "(四星)")
+		} else {
+			probability := rand.Intn(threestarsum1 - 1)
+			// fmt.Printf("%v(三星)", threestar1[probability])
+			mysql.Insertprop(uid, threestar1[probability]+"(三星)", now.Format("2006/01/02 15:04:05"))
+			message += (threestar1[probability] + "(三星)")
+		}
+		if times > 1 {
+			message += ","
+		}
+		times -= 1
+		fourtimes += 1
+		fivetimes += 1
+		if fivetimes >= guafive {
+			profive += guaprofive
+		}
+	}
+	mysql.Timeschange(uid, fivetimes, fourtimes)
+	data, _ := proto.Encode(message)
+	conn.Write(data)
+}
+
+func checkresult(msg *string, conn net.Conn) {
+	var uid int64
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tp, 10, 64)
+	mysql.Checkresult(uid)
+}
+
+func checkstatistics(msg *string, conn net.Conn) {
+	var uid int64
+	var tp string
+	k := 0
+	for _, r := range *msg {
+		if r == ' ' {
+			k += 1
+		}
+		if k == 1 && r != ' ' {
+			tp += string(r)
+		}
+	}
+	uid, _ = strconv.ParseInt(tp, 10, 64)
+	t1, t2 := mysql.Checkstatistics(uid)
+	// fmt.Printf("五星已有%v次没出，四星已有%v次没出", t1, t2)
+	message := "五星已有" + strconv.Itoa(t1) + "次没出，四星已有" + strconv.Itoa(t2) + "次没出"
+	data, _ := proto.Encode(message)
+	conn.Write(data)
 }
 
 func register(msg *string, conn net.Conn) {
@@ -241,6 +379,12 @@ func process(conn net.Conn) {
 			checktoggle(&msg, conn)
 		case "toggle":
 			toggle(&msg, conn)
+		case "take":
+			take(&msg, conn)
+		case "checkresult":
+			checkresult(&msg, conn)
+		case "checkstatistics":
+			checkstatistics(&msg, conn)
 		default:
 			break
 		}
@@ -248,7 +392,101 @@ func process(conn net.Conn) {
 	}
 }
 
+func init1() {
+	file, err := os.Open("data/3.pool")
+	if err != nil {
+		fmt.Println("open file failed, err:", err)
+		return
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	k := 6
+	for {
+		line, err := reader.ReadString('\n') //注意是字符
+		if extraction(line, "[", "]", 1) == "5star" {
+			k = 5
+		} else if extraction(line, "[", "]", 1) == "4star" {
+			k = 4
+		} else if extraction(line, "[", "]", 1) == "3star" {
+			k = 3
+		} else if extraction(line, "[", "]", 1) != "" {
+			if k == 5 {
+				fivestar1[fivestarsum1] = extraction(line, "[", "]", 1)
+				fivestarsum1 += 1
+			} else if k == 4 {
+				fourstar1[fourstarsum1] = extraction(line, "[", "]", 1)
+				fourstarsum1 += 1
+			} else if k == 3 {
+				threestar1[threestarsum1] = extraction(line, "[", "]", 1)
+				threestarsum1 += 1
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	for i := 0; i < fivestarsum1; i += 1 {
+		fmt.Println(fivestar1[i])
+	}
+}
+
+func init2() {
+	file, err := os.Open("data/setting.in")
+	if err != nil {
+		fmt.Println("open file failed, err:", err)
+		return
+	}
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	k := 1
+	for {
+		line, err := reader.ReadString('\n') //注意是字符
+		if k == 4 {
+			profive, err = strconv.ParseFloat(extraction(line, "[", "]", 1), 64)
+			initprofive = profive
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+		}
+		if k == 5 {
+			profour, err = strconv.ParseFloat(extraction(line, "[", "]", 1), 64)
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+		}
+		if k == 6 {
+			prothree, err = strconv.ParseFloat(extraction(line, "[", "]", 1), 64)
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+		}
+		if k == 9 {
+			guafive, err = strconv.Atoi(extraction(line, "[", "]", 1))
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+			guaprofive, err = strconv.ParseFloat(extraction(line, "[", "]", 2), 64)
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+		}
+		if k == 10 {
+			guafour, err = strconv.Atoi(extraction(line, "[", "]", 1))
+			if err != nil {
+				fmt.Printf("error:%v", err)
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		k += 1
+	}
+	fmt.Printf("%v\n%v\n%v\n%v\n%v\n%v\n", profive, profour, prothree, guafive, guaprofive, guafour)
+}
+
 func main() {
+	init1()
+	init2()
 	listen, err := net.Listen("tcp", "127.0.0.1:30000")
 	if err != nil {
 		log.SetOutput(file1)

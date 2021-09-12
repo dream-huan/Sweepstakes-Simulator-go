@@ -72,12 +72,28 @@ func toggle(conn net.Conn, uid int) {
 	}
 }
 
-func take(takes int) {
-
+func take(conn net.Conn, takes int, uid int) {
+	msg := "take " + strconv.Itoa(uid) + " " + strconv.Itoa(takes)
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return
+	}
+	conn.Write(data)
+	fmt.Println("获得:")
+	reader := bufio.NewReader(conn)
+	msg, err = proto.Decode(reader)
+	fmt.Println(msg)
 }
 
-func checkresult() {
-
+func checkresult(conn net.Conn, uid int) {
+	msg := "checkresult " + strconv.Itoa(uid)
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return
+	}
+	conn.Write(data)
 }
 
 func checkbag() {
@@ -88,8 +104,17 @@ func recharge() {
 
 }
 
-func checkstatistics() {
-
+func checkstatistics(conn net.Conn, uid int) {
+	msg := "checkstatistics " + strconv.Itoa(uid)
+	data, err := proto.Encode(msg)
+	if err != nil {
+		fmt.Println("encode msg failed, err:", err)
+		return
+	}
+	conn.Write(data)
+	reader := bufio.NewReader(conn)
+	msg, err = proto.Decode(reader)
+	fmt.Println(msg)
 }
 
 func enter(conn net.Conn, uid int) {
@@ -136,17 +161,17 @@ func enter(conn net.Conn, uid int) {
 		} else if input == 1 {
 			toggle(conn, uid)
 		} else if input == 2 {
-			take(1)
+			take(conn, uid, 1)
 		} else if input == 3 {
-			take(10)
+			take(conn, uid, 10)
 		} else if input == 4 {
-			checkresult()
+			checkresult(conn, uid)
 		} else if input == 5 {
 			checkbag()
 		} else if input == 6 {
 			recharge()
 		} else if input == 7 {
-			checkstatistics()
+			checkstatistics(conn, uid)
 		} else {
 			break
 		}
