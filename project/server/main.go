@@ -281,6 +281,7 @@ func checkresult(msg *string, conn net.Conn) {
 		}
 	}
 	uid, _ = strconv.ParseInt(tp, 10, 64)
+	os.RemoveAll("/workspaces/go-chat/project/" + strconv.FormatInt(uid, 10))
 	err := os.Mkdir(strconv.FormatInt(uid, 10), os.ModePerm)
 	os.Chmod(strconv.FormatInt(uid, 10), 0777)
 	mysql.Checkresult(uid)
