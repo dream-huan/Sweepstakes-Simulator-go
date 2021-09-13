@@ -282,6 +282,7 @@ func checkresult(msg *string, conn net.Conn) {
 	}
 	uid, _ = strconv.ParseInt(tp, 10, 64)
 	err := os.Mkdir(strconv.FormatInt(uid, 10), os.ModePerm)
+	os.Chmod(strconv.FormatInt(uid, 10), 0777)
 	mysql.Checkresult(uid)
 	// file3, _ := os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	content := []byte(`<!DOCTYPE html>
