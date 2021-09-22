@@ -8,18 +8,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var file1, _ = os.OpenFile("log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-var file2, _ = os.OpenFile("log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+// var file1, _ = os.OpenFile("log/log error"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+// var file2, _ = os.OpenFile("log/log basic"+time.Now().Format("2006-01-02")+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 var fivestar1 [1024]string //储存有哪些五星
 var fourstar1 [1024]string //同理上面
 var threestar1 [1024]string
@@ -33,6 +34,8 @@ var initprofive float64
 var guafour int        //保底四星次数
 var guafive int        //五星概率提升次数
 var guaprofive float64 //五星概率提升
+var workspace string
+var ipconfig string
 
 func extraction(s string, a string, b string, times int) (str string) {
 	str = ""
@@ -68,32 +71,14 @@ func login(msg *string, conn net.Conn) {
 			tp += string(r)
 		}
 	}
-	uid, err := strconv.ParseInt(tu, 10, 64)
-	if err != nil {
-		log.SetOutput(file1)
-		log.SetPrefix("[Error]")
-		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-		log.Printf("%v", err)
-	}
+	uid, _ = strconv.ParseInt(tu, 10, 64)
 	if mysql.Checkp(uid, tp) {
-		data, err := proto.Encode("true")
+		data, _ := proto.Encode("true")
 		gologger.BasicLogwrite(fmt.Sprintf("New Login: Uid:%d EnterPassword:%s Result:%s ", uid, tp, "true"))
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
-		}
 		conn.Write(data)
 	} else {
-		data, err := proto.Encode("false")
+		data, _ := proto.Encode("false")
 		gologger.BasicLogwrite(fmt.Sprintf("New Login: Uid:%d EnterPassword:%s Result:%s ", uid, tp, "false"))
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
-		}
 		conn.Write(data)
 	}
 }
@@ -114,13 +99,10 @@ func checktoggle(msg *string, conn net.Conn) {
 	k = 1
 	uid, _ = strconv.ParseInt(tu, 10, 64)
 	pool = mysql.Checkpool(uid)
-	file, err := os.Open("data/cardpool.txt")
-	if err != nil {
-		fmt.Println("open file failed, err:", err)
-		return
-	}
+	file, _ := os.Open("data/cardpool.txt")
 	defer file.Close()
 	reader := bufio.NewReader(file)
+	gologger.BasicLogwrite(fmt.Sprintf("CheckToggle: Uid:%d ", uid))
 	var content string
 	for {
 		line, err := reader.ReadString('\n') //注意是字符
@@ -156,6 +138,7 @@ func toggle(msg *string, conn net.Conn) {
 	}
 	uid, _ = strconv.ParseInt(tu, 10, 64)
 	pool, _ = strconv.Atoi(tp)
+	gologger.BasicLogwrite(fmt.Sprintf("Toggle: Uid:%d Pool:%d ", uid, pool))
 	mysql.Toggle(uid, pool)
 }
 
@@ -178,9 +161,11 @@ func recharge(msg *string, conn net.Conn) {
 	uid, _ = strconv.ParseInt(tu, 10, 64)
 	if mysql.Recharge(tp, uid) == true {
 		data, _ := proto.Encode("充值状态:true")
+		gologger.BasicLogwrite(fmt.Sprintf("Recharge: Uid:%d Keycode:%s Result:%s", uid, tp, "true"))
 		conn.Write(data)
 	} else {
 		data, _ := proto.Encode("充值状态:false")
+		gologger.BasicLogwrite(fmt.Sprintf("Recharge: Uid:%d Keycode:%s Result:%s", uid, tp, "false"))
 		conn.Write(data)
 	}
 }
@@ -207,6 +192,7 @@ func take(msg *string, conn net.Conn) {
 	fivetimes, fourtimes := mysql.Checkstatistics(uid)
 	message := ""
 	stone := mysql.Getstone(uid)
+	gologger.BasicLogwrite(fmt.Sprintf("Take: Uid:%d times:%d Stone:%d ", uid, times, stone))
 	if stone < times*160 {
 		message := "原石不足，现有原石:" + strconv.Itoa(stone)
 		data, _ := proto.Encode(message)
@@ -281,10 +267,11 @@ func checkresult(msg *string, conn net.Conn) {
 		}
 	}
 	uid, _ = strconv.ParseInt(tp, 10, 64)
-	os.RemoveAll("/workspaces/go-chat/project/" + strconv.FormatInt(uid, 10))
+	os.RemoveAll(workspace + strconv.FormatInt(uid, 10))
 	err := os.Mkdir(strconv.FormatInt(uid, 10), os.ModePerm)
 	os.Chmod(strconv.FormatInt(uid, 10), 0777)
 	mysql.Checkresult(uid)
+	gologger.BasicLogwrite(fmt.Sprintf("CheckResult: Uid:%d  ", uid))
 	// file3, _ := os.OpenFile(strconv.Itoa(uid)+".html", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	content := []byte(`<!DOCTYPE html>
 <html>
@@ -292,7 +279,14 @@ func checkresult(msg *string, conn net.Conn) {
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<title>记录查询</title>
 </head>
-<body>`)
+<body>
+<table border="1" style="border-collapse: collapse;">
+<caption>常驻祈愿</caption>
+<tr>
+<td style="text-align:center">UID</td>
+<td style="text-align:center">道具</td>
+<td style="text-align:center">祈愿时间</td>
+</tr>`)
 	err = ioutil.WriteFile(strconv.FormatInt(uid, 10)+"/"+strconv.FormatInt(uid, 10)+".html", content, 0644)
 	file, err := os.Open(strconv.FormatInt(uid, 10) + "/" + strconv.FormatInt(uid, 10) + ".txt")
 	if err != nil {
@@ -306,12 +300,33 @@ func checkresult(msg *string, conn net.Conn) {
 	defer f.Close()
 	for {
 		line, err := reader.ReadString('\n') //注意是字符
-		_, _ = io.WriteString(f, line+"<br>")
+		_, _ = io.WriteString(f, "<tr>\n")
+		k := 0
+		temp := ""
+		for _, r := range line {
+			if r == '	' {
+				k += 1
+				if strings.Contains(temp, "三星") {
+					_, _ = io.WriteString(f, "<td style=\"color:#46A3FF\">"+temp+"</td>\n")
+				} else if strings.Contains(temp, "四星") {
+					_, _ = io.WriteString(f, "<td style=\"color:#9F35FF\">"+temp+"</td>\n")
+				} else if strings.Contains(temp, "五星") {
+					_, _ = io.WriteString(f, "<td style=\"color:#FF0000\">"+temp+"</td>\n")
+				} else {
+					_, _ = io.WriteString(f, "<td>"+temp+"</td>")
+				}
+				temp = ""
+				continue
+			}
+			temp += string(r)
+		}
+		_, _ = io.WriteString(f, "<td>"+temp+"</td>\n")
+		_, _ = io.WriteString(f, "</tr>\n")
 		if err == io.EOF {
 			break
 		}
 	}
-	io.WriteString(f, "\n</body>\n</html>")
+	io.WriteString(f, "\n</table>\n</body>\n</html>")
 }
 
 func checkstatistics(msg *string, conn net.Conn) {
@@ -330,6 +345,7 @@ func checkstatistics(msg *string, conn net.Conn) {
 	t1, t2 := mysql.Checkstatistics(uid)
 	// fmt.Printf("五星已有%v次没出，四星已有%v次没出", t1, t2)
 	message := "五星已有" + strconv.Itoa(t1) + "次没出，四星已有" + strconv.Itoa(t2) + "次没出"
+	gologger.BasicLogwrite(fmt.Sprintf("CheckStatistics: Uid:%d  ", uid))
 	data, _ := proto.Encode(message)
 	conn.Write(data)
 }
@@ -369,13 +385,7 @@ func register(msg *string, conn net.Conn) {
 	}
 	uid := mysql.Insert(name, p)
 	gologger.BasicLogwrite(fmt.Sprintf("New Register: Uid:%d Name:%s Password:%s ", uid, name, p))
-	data, err := proto.Encode(strconv.FormatInt(uid, 10))
-	if err != nil {
-		log.SetOutput(file1)
-		log.SetPrefix("[Error]")
-		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-		log.Printf("%v", err)
-	}
+	data, _ := proto.Encode(strconv.FormatInt(uid, 10))
 	conn.Write(data)
 }
 
@@ -399,33 +409,15 @@ func changep(msg *string, conn net.Conn) {
 			np += string(r)
 		}
 	}
-	uid, err := strconv.ParseInt(tu, 10, 64)
-	if err != nil {
-		log.SetOutput(file1)
-		log.SetPrefix("[Error]")
-		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-		log.Printf("%v", err)
-	}
+	uid, _ = strconv.ParseInt(tu, 10, 64)
 	if mysql.Checkp(uid, tp) {
 		mysql.Pnp(uid, np)
 		gologger.BasicLogwrite(fmt.Sprintf("New Changep: Uid:%d Oldp:%s Newp:%s Result:%s ", uid, tp, np, "true"))
-		data, err := proto.Encode("true")
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
-		}
+		data, _ := proto.Encode("true")
 		conn.Write(data)
 	} else {
-		data, err := proto.Encode("false")
+		data, _ := proto.Encode("false")
 		gologger.BasicLogwrite(fmt.Sprintf("New Changep: Uid:%d Oldp:%s Newp:%s Result:%s ", uid, tp, np, "false"))
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
-		}
 		conn.Write(data)
 	}
 }
@@ -437,12 +429,6 @@ func process(conn net.Conn) {
 		msg, err := proto.Decode(reader)
 		if err == io.EOF {
 			return
-		}
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
 		}
 		temp := ""
 		for i := 0; i < len(msg); i++ {
@@ -473,14 +459,13 @@ func process(conn net.Conn) {
 			getstone(&msg, conn)
 		case "recharge":
 			recharge(&msg, conn)
-		default:
-			break
 		}
 		// fmt.Println("收到client发来的数据：", msg)
 	}
 }
 
-func init1() {
+func init() {
+	//配置文件读取
 	file, err := os.Open("data/3.pool")
 	if err != nil {
 		fmt.Println("open file failed, err:", err)
@@ -516,17 +501,15 @@ func init1() {
 	for i := 0; i < fivestarsum1; i += 1 {
 		fmt.Println(fivestar1[i])
 	}
-}
-
-func init2() {
-	file, err := os.Open("data/setting.in")
+	file, err = os.Open("data/setting.in")
 	if err != nil {
 		fmt.Println("open file failed, err:", err)
 		return
 	}
 	defer file.Close()
-	reader := bufio.NewReader(file)
-	k := 1
+	reader = bufio.NewReader(file)
+	k = 1
+	//概率分配
 	for {
 		line, err := reader.ReadString('\n') //注意是字符
 		if k == 4 {
@@ -564,6 +547,12 @@ func init2() {
 				fmt.Printf("error:%v", err)
 			}
 		}
+		if k == 13 {
+			workspace = extraction(line, "[", "]", 1)
+		}
+		if k == 16 {
+			ipconfig = extraction(line, "[", "]", 1)
+		}
 		if err == io.EOF {
 			break
 		}
@@ -573,27 +562,11 @@ func init2() {
 }
 
 func main() {
-	init1()
-	init2()
-	listen, err := net.Listen("tcp", "127.0.0.1:30000")
-	if err != nil {
-		log.SetOutput(file1)
-		log.SetPrefix("[Error]")
-		log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-		log.Printf("%v", err)
-	}
+	fmt.Printf("Copyright ©2021 dreamxw.com All Right Reserved Powered by Azure")
+	listen, _ := net.Listen("tcp", ipconfig)
 	defer listen.Close()
 	for {
-		conn, err := listen.Accept()
-		if err != nil {
-			log.SetOutput(file1)
-			log.SetPrefix("[Error]")
-			log.SetFlags(log.Llongfile | log.Ldate | log.Lmicroseconds)
-			log.Printf("%v", err)
-			continue
-		}
-		fmt.Printf("Copyright ©2021 dreamxw.com All Right Reserved Powered by Azure")
-		fmt.Printf("The Service is starting...")
+		conn, _ := listen.Accept()
 		go process(conn)
 	}
 }

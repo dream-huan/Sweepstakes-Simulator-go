@@ -94,6 +94,7 @@ func checkresult(conn net.Conn, uid int) {
 		return
 	}
 	conn.Write(data)
+	fmt.Printf("%v\n", "生成记录成功！请前往https://api.dreamxw.com/"+strconv.Itoa(uid)+"/查询")
 }
 
 func checkbag() {

@@ -9,6 +9,17 @@
 From the [72] times onwards, the probability of obtaining 5 stars gradually increases, each increment of [0.052]
 4 stars are bound to appear in [10] draws or less.
 
+[Web Resource]
+Website root folder:[/workspaces/go-chat/project/]
+
+[Remoto Ip & Port]
+[127.0.0.1:30000]
+
+[Error log & Basic log]
+Error log :[Enabled] (Enabled or Disabled)
+Basic log :[Enabled] (Enabled or Disabled)
+
+
 [Tips]
 1.The total probability of obtaining 5 stars, 4 stars, and 3 stars must be 100%.
 
